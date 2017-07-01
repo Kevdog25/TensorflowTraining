@@ -1,6 +1,7 @@
 import tensorflow as tf
 import tensorflow.contrib.layers as tfLayers
 import numpy as np
+from RewardTuner import RewardTuner
 
 class PolicyLearner:
     
@@ -11,6 +12,7 @@ class PolicyLearner:
         self.Weights = []
         self.Biases = []
         self.WeightHistory = []
+        self.RewardTuner = RewardTuner()
         return
         
     def defineLayers(self, layerDims, activation):
@@ -69,7 +71,7 @@ class PolicyLearner:
         return
     
     def defineLossFunction(self, regRatio):
-        loss = tf.nn.sigmoid_cross_entropy_with_logits(labels = self.Labels, logits = self.Y)
+        loss = tf.nn.softmax_cross_entropy_with_logits(labels = self.Labels, logits = self.Y)
         #Idk. this regularization 100% does not work.
         #loss = tfLayers.apply_regularization(tfLayers.l2_regularizer(regRatio),self.Weights)
         return loss
@@ -86,6 +88,8 @@ class PolicyLearner:
             print('nothin!') 
             return
         
+        #trying this
+        #normedRewards = self.RewardTuner.fastWin(self.RewardHistory)        
         normedRewards = self.normalizeRewards(self.RewardHistory)
         allGrads = self.calcGradients()
         feed_dict = {}
@@ -94,7 +98,7 @@ class PolicyLearner:
                                 for nGame, rewards in enumerate(normedRewards) 
                                 for nState, reward in enumerate(rewards)],
                               axis = 0)
-            feed_dict[placeholder] = -gradMean #KEVIN. HERE IS THE - SIGN.
+            feed_dict[placeholder] = gradMean #KEVIN. HERE IS THE - SIGN.
         if self.LogUpdates:
             self.WeightHistory.append([w.eval() for w in self.Weights])
         self.Trainer.run(feed_dict = feed_dict)
@@ -172,11 +176,11 @@ def newSession():
     sessConfig = tf.ConfigProto(intra_op_parallelism_threads=4, inter_op_parallelism_threads=4)
     return tf.Session(config = sessConfig)
 
-def playGame(g, learner,maxMoves):
+def playGame(g, learner, maxMoves):
     state = g.newGame()
     for nState in range(maxMoves):
         action = learner.getAction(state)
-        print(learner.getLogits(state),learner.getAction(state))
+        print([s for s in state[0][:]], learner.getLogits(state),learner.getAction(state))
         state, end = g.getNextState(state, action)
         rewardHist.append(end)
         if int(end) != 0:
@@ -188,15 +192,15 @@ from b02f4d5609550a0a04878dc5a54f9c2b import game
 g = game()
 state = g.newGame()
 learner = PolicyLearner(
-    [state.shape[1], 10, 10, g.getPossibleMoves()],
-    learningRate = 0.11,
-    discountRate = 0.8,
+    [state.shape[1], 25, 25, g.getPossibleMoves()],
+    learningRate = 0.001,
+    discountRate = 0.95,
     regularizationRatio = 0.00001, # this doesn't work
     activation = tf.nn.relu,
     logUpdates = True)
 
-nIterations = 10
-nGames = 50
+nIterations = 30
+nGames = 200
 maxMoves = 2000
 
 with newSession():
@@ -217,10 +221,12 @@ with newSession():
                 if int(end) != 0:
                     ended = True
                     break
-            if(ended): 
-                learner.recordGame(stateHist,actionHist,rewardHist)
+            if ended: learner.recordGame(stateHist,actionHist,rewardHist)
         learner.applyUpdate()
         print('Win Rate: {0}'.format(testLearner(learner,g)))
         print('Weight magnitude',[rms(w) for w in learner.WeightHistory[-1]])
-        #playGame(g,learner,maxMoves)
+    for i in range(10):
+        print('New Game')
+        playGame(g,learner,maxMoves)
+        print('Game Over')
 
