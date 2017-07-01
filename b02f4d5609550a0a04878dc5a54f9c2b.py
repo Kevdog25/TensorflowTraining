@@ -23,13 +23,15 @@ class player():
 
                         if self.position not in range(0,11):
                                 if self.position == -1:
-                                        self.state = self.update_state(self.position, self.state[:,11:13])
+                                        self.state = self.update_state(self.position, self.state[:,11:13], loss=True)
                                         self.change_win(-1)
                                         return
                                 if self.state[0,12]:
+                                        self.state = self.update_state(self.position, self.state[:,11:13])
                                         self.change_win(1)
                                 else:
                                         self.change_win(-1)
+                                        self.state = self.update_state(self.position, self.state[:,11:13], loss=True)
                         else:
                                 self.state = self.update_state(self.position, self.state[:,11:13])
 
@@ -39,10 +41,12 @@ class player():
         def get_win_state(self):
                 return self.win_state
 
-        def update_state(self, pos, conditions):
+        def update_state(self, pos, conditions, loss=False):
                 game_state = np.concatenate((np.zeros((1,11)), conditions), axis=1)
-                if pos != -1:
+                if not loss:
                         game_state[0,pos] = 1
+                if pos == 11 and conditions[0,1] == 1:
+                        game_state = np.ones((1,13))
                 return game_state
 
         def get_state(self):

@@ -7,23 +7,35 @@ Created on Fri Jun 30 20:58:00 2017
 
 import numpy as np
 from b02f4d5609550a0a04878dc5a54f9c2b import game
+from AStar import *
+
+def eval(s, e):
+    return e
+    if int(e) != 0:
+        return e
+    return np.mean(s)
+
+nWins = 0
+nGames = 10
+maxMoves = 100
+
+player = AStar(eval, 50, 100)
 
 new_game = game()
-next_board = new_game.newGame()
-print('Current Board:\n',next_board)
-
-while True:
-        move = str(input('make a move (L or R):'))
-        a = np.zeros((1,2))
-        if move.upper() == 'L':
-                a[0,0] = 1
-        elif move.upper() == 'R':
-                a[0,1] = 1
-
-        next_board, win = new_game.getNextState(next_board, a)
-        print('\nWin Status:', win, '\nCurrent Board:\n',next_board)
-
-        if win != 0:
-                next_board = new_game.newGame()
-                win = 0
-                print('NEW GAME!')
+print('starting')
+for i in range(nGames):
+    next_board = new_game.newGame()
+    print('New Game')
+    for j in range(maxMoves):
+        print(next_board)
+        action = player.findMove(next_board, new_game)
+        next_board, e = new_game.getNextState(next_board,action)
+        if int(e) != 0:
+            break
+    if e > 0:
+        print('Won!')
+        nWins += 1
+    else:
+        print('Lose!')
+    print(nWins/(i+1))
+        
